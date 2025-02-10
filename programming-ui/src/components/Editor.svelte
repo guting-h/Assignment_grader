@@ -68,7 +68,6 @@
         };
         socket.onmessage = (event) => {
             const result = JSON.parse(event.data);
-            console.log("Received WebSocket Update:", result);
 
             evaluationResult.set(result);
             isPending.set(false);

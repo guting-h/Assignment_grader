@@ -9,12 +9,17 @@ docker build -t grader-image .
 
 ## Development Environment
 
+Start the application with:
 ```bash
 docker compose up
 ```
 
 ## Production Evironment
 
+Start the application with:
+```bash
+docker compose -f docker-compose.prod.yml up        
+```
 ## Testing
 
 ### playwright tests:
@@ -27,6 +32,8 @@ docker compose up
     ```
     npx playwright install
     ```
+
+Note: fetching an active assignment occassionally can be slow, causing some of the tests to fail.
 
 ### k6 tests:
 1. Make sure the application is up and running (e.g. with `docker compose up`)
