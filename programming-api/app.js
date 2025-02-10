@@ -1,7 +1,5 @@
 import * as programmingAssignmentService from "./services/programmingAssignmentService.js";
 import { serve } from "./deps.js";
-import { Buffer } from "npm:buffer";
-//import { createMQConnection } from "./services/gradeConsumer.js";
 import { cachedAssignmentService } from "./util/cacheUtil.js";
 import { redisClient } from "./util/redisClient.js";
 

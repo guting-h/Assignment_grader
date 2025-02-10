@@ -51,23 +51,6 @@ const findSubmissionById = async (submissionId) => {
   return result.length > 0 ? result[0] : null;
 };
 
-// find the first incompleted assignment for a user
-// const findIncompleteAssignment = async (userId) => {
-//   return await sql`
-//     SELECT a.id, a.title, a.assignment_order, a.handout
-//     FROM programming_assignments a
-//     WHERE NOT EXISTS (
-//         SELECT 1
-//         FROM programming_assignment_submissions s
-//         WHERE s.programming_assignment_id = a.id
-//         AND s.user_uuid = ${userId}
-//         AND s.correct = TRUE
-//     )
-//     ORDER BY a.assignment_order
-//     LIMIT 1;
-//   `
-// }
-
 const findUniqueCorrectAssignments = async (userId) => {
   return await sql`
     SELECT DISTINCT programming_assignment_id 
