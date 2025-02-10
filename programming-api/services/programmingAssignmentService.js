@@ -8,18 +8,22 @@ const findById = async (id) => {
   return await sql`SELECT * FROM programming_assignments WHERE id = ${id};`;
 }
 
-const findSubmissionByUser = async(userId) => {
+const findSubmissionByUser = async (userId) => {
   return await sql`SELECT * FROM programming_assignment_submissions WHERE user_uuid = ${userId};`
 }
 
+const findActiveSubmission = async (userId) => {
+  return await sql`SELECT * FROM programming_assignment_submissions WHERE user_uuid = ${userId} AND status != 'processed'`;
+}
+
 const findMatchingSubmission = async (userId, assignmentId, code) => {
-    return await sql`
-      SELECT * 
-      FROM programming_assignment_submissions 
-      WHERE user_uuid = ${userId} 
-        AND programming_assignment_id = ${assignmentId}
-        AND code = ${code};
-    `
+  return await sql`
+    SELECT * 
+    FROM programming_assignment_submissions 
+    WHERE user_uuid = ${userId} 
+      AND programming_assignment_id = ${assignmentId}
+      AND code = ${code};
+  `
 }
 
 const createSubmission = async(userId, assgId, code) => {
@@ -48,30 +52,41 @@ const findSubmissionById = async (submissionId) => {
 };
 
 // find the first incompleted assignment for a user
-const findIncompleteAssignment = async (userId) => {
+// const findIncompleteAssignment = async (userId) => {
+//   return await sql`
+//     SELECT a.id, a.title, a.assignment_order, a.handout
+//     FROM programming_assignments a
+//     WHERE NOT EXISTS (
+//         SELECT 1
+//         FROM programming_assignment_submissions s
+//         WHERE s.programming_assignment_id = a.id
+//         AND s.user_uuid = ${userId}
+//         AND s.correct = TRUE
+//     )
+//     ORDER BY a.assignment_order
+//     LIMIT 1;
+//   `
+// }
+
+const findUniqueCorrectAssignments = async (userId) => {
   return await sql`
-    SELECT a.id, a.title, a.assignment_order, a.handout
-    FROM programming_assignments a
-    WHERE NOT EXISTS (
-        SELECT 1
-        FROM programming_assignment_submissions s
-        WHERE s.programming_assignment_id = a.id
-        AND s.user_uuid = ${userId}
-        AND s.correct = TRUE
-    )
-    ORDER BY a.assignment_order
-    LIMIT 1;
-  `
+    SELECT DISTINCT programming_assignment_id 
+    FROM programming_assignment_submissions
+    WHERE user_uuid = ${userId}
+    AND status = 'processed'
+    AND correct = true;
+  `;
 }
 
 
 export { 
   findAll, 
   findById, 
-  findSubmissionByUser, 
-  findIncompleteAssignment, 
+  findSubmissionByUser,
   findMatchingSubmission,
   createSubmission,
   updateSubmission,
-  findSubmissionById
+  findSubmissionById,
+  findActiveSubmission,
+  findUniqueCorrectAssignments
 };

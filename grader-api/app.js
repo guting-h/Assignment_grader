@@ -1,7 +1,30 @@
 import { serve } from "./deps.js";
 import { grade } from "./services/gradingService.js";
+import { createClient } from "npm:redis";
 
 let state = -1;
+
+const SERVER_ID = crypto.randomUUID();
+
+const redisClient = createClient({
+  url: "redis://redis:6379",
+  pingInterval: 1000,
+});
+
+await redisClient.connect();
+
+const STREAM_NAME = "grading_queue";
+const CONSUMER_GROUP = "grading_consumers";
+
+try {
+  await redisClient.xGroupCreate(STREAM_NAME, CONSUMER_GROUP, "$", { MKSTREAM: true });
+  console.log(`Consumer Group '${CONSUMER_GROUP}' created`);
+} catch (err) {
+  if (!err.message.includes("BUSYGROUP")) {
+    console.error("Error creating consumer group:", err);
+  }
+}
+
 
 const getCode = () => {
   state = (state + 1) % 5;
@@ -57,29 +80,49 @@ if __name__ == '__main__':
   return await grade(code, testCode);
 };
 
-const handleRequest = async (request) => {
-  // the starting point for the grading api grades code following the
-  // gradingDemo function, but does not e.g. use code from the user
-  let result;
-  try {
-    const requestData = await request.json();
+const consumeSubmissions = async () => {
+  console.log(`🚀 [${SERVER_ID}] Waiting for submissions from Redis Streams...`);
 
-    console.log("Request data:");
-    console.log(requestData);
+  while (true) {
+    const response = await redisClient.xReadGroup(CONSUMER_GROUP, SERVER_ID, {
+      key: STREAM_NAME,
+      id: '>', 
+      count: 1,
+      block: 5000 
+    });
 
-    const code = requestData.code;
-    const testCode = requestData.testCode;
+    try {
+      if (response && response.length > 0) {
+        const [streamData] = response;
+        const { messages } = streamData;
+        const { id, message } = messages[0];
 
-    result = await grade(code, testCode);
-  } catch (e) {
-    result = await gradingDemo();
+        console.log(`⏳ Processing submission ${message.submissionId}`)
+        
+        const result = await grade(message.code, message.testCode);
+        
+        // push to grading result stream
+        await redisClient.xAdd("grading_result", "*", {
+          submissionId: message.submissionId,
+          grader_feedback: result,
+          status: "processed",
+          correct: String(result.includes("OK"))
+        });
+
+        console.log(`Grading complete for submission: ${message.submissionId}`);
+
+        // remove processed submission from stream
+        await redisClient.xDel(STREAM_NAME, id);
+      }
+
+      if (!response) continue;
+    } catch (e) {
+      console.log("ERROR reading group", e)
+      break
+    }
   }
-
-  // in practice, you would either send the code to grade to the grader-api
-  // or use e.g. a message queue that the grader api would read and process
-
-  return new Response(JSON.stringify({ result: result }));
 };
 
-const portConfig = { port: 7000, hostname: "0.0.0.0" };
-serve(handleRequest, portConfig);
+console.log(`${SERVER_ID} is running and waiting for submissions...`);
+
+await consumeSubmissions();

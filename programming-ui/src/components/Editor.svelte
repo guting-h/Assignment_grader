@@ -1,9 +1,10 @@
 <script>
-    import { userUuid, currentAssignmentID, getAssignment } from "../stores/stores.js";
+    import { userUuid, currentAssignmentID, getAssignment, fetchScore } from "../stores/stores.js";
     import { writable } from "svelte/store";
 
     let code = "";
     let evaluationResult = writable({});
+    let submissionId = writable("");
     let isPending = writable(false); // controls the submission workflow
     let socket;
 
@@ -22,41 +23,78 @@
             alert("Your previous submission is still being graded. Please wait.");
             return;
         }
-        //open websocket connection for grading
-        const host = window.location.host;
-        socket = new WebSocket('ws://' + host + `/api/grade`);
+        isPending.set(true);
+        try {
+            const response = await fetch("/api/submit", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userUuid: $userUuid, code: code, assgId: assignmentID }),
+            });
+    
+            const responseData = await response.json();
 
-        // send code for grading
-        socket.onopen = (event) => {
-            isPending.set(true);
-            console.log("WebSocket connection opened.");
-            socket.send(JSON.stringify({ user: $userUuid, code: code, assignmentID: assignmentID }));
-        };
-
-        // wait and process grading result
-        socket.onmessage = (event) => {
-            const jsonData = JSON.parse(event.data);
-            evaluationResult.set(jsonData);
-            console.log($evaluationResult);
-            if (jsonData.status === "processed") {
+            // handles the case where there's already a submission in grading
+            if (!response.ok && response.status === 400) {
+                alert(responseData.error); 
                 isPending.set(false);
-                socket.close();
-            }   
-        };
-        socket.onerror = (err) => {
-            console.error(err);
-            alert("An error occurred when grading ");
+                return;
+            }
+
+            evaluationResult.set(responseData);
+            submissionId.set(responseData.submissionId);
+            console.log(`Submitted submission ${$submissionId}`)
+
+            // if submitted a new solution -> poll for grader result
+            if (responseData.status === "pending"){
+                conectWS();  
+            } else { // submission processed
+                isPending.set(false);
+            }
+            
+        } catch(err) {
+            console.log(err);
+            alert("An unknown error occurred when making a submission ");
             isPending.set(false);
-        };
-        socket.onclose = () => console.log("WebSocket connection closed.");
+        }
     };
+
+    const conectWS = () => {
+        const host = window.location.host;
+        socket = new WebSocket('ws://' + host + `/api/result`);
+
+        socket.onopen = () => {
+            console.log("WebSocket connected.");
+            socket.send(JSON.stringify({submissionId: $submissionId}))
+        };
+        socket.onmessage = (event) => {
+            const result = JSON.parse(event.data);
+            console.log("Received WebSocket Update:", result);
+
+            evaluationResult.set(result);
+            isPending.set(false);
+            // update points only if the new submission is correct
+            if (result.correct) { 
+                fetchScore();
+            }
+        };
+
+        socket.onerror = (error) => {
+            console.error("WebSocket Error:", error);
+            socket.close();
+        };
+
+        socket.onclose = () => {
+            console.log("WebSocket closed.");
+        };
+    }
 
     $: feedbackText = (() => {
         let result = $evaluationResult;
         if (!result || !result.grader_feedback) return "";
 
+        // result.correct is a String
         if (result.correct) return "✅ All tests passed!";
-        if (!result.correct) return  "❌ Some tests failed." + "\n \n" + result.grader_feedback;
+        if (!result.correct) return  "❌ Some tests failed." + "\n \n" + result.grader_feedback.replace(/\\n/g, "\n");
         return "Unexpected output.";
     })();
 </script>

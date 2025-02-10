@@ -26,6 +26,7 @@ services:
     depends_on:
       - database
       - flyway
+      - redis
     env_file:
       - project.env
 
@@ -51,6 +52,8 @@ services:
       - "/var/run/docker.sock:/var/run/docker.sock"
     expose:
       - 7000
+    deploy:
+      replicas: 2
 
   database:
     container_name: database-server-dab-p1-0dc0c7b7-7071-4c37-8320-88d8a016ac36
@@ -78,5 +81,11 @@ services:
       - nginx
     volumes:
       - ./e2e-playwright/tests:/e2e-playwright/tests
-    profiles:
-      - test 
+
+  redis:
+    image: redis:latest
+    command: redis-server /usr/local/etc/redis/redis.conf
+    volumes:
+      - ./redis/redis.conf:/usr/local/etc/redis/redis.conf
+    expose:
+      - 6379
