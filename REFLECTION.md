@@ -1,7 +1,5 @@
 ## Overview
 
-The application offers a grader system that enables users to solve programming assignments interactively. Upon opening the application, users see an assignment title and handout, along with a textarea to write their Python solution. When they submit their code, it is sent for grading. After the grading result is available, it will automatically be updated and displayed to the user. Submitting a correct solution allows the user to navigate to a new assignmnent page. Each uniquely completed assignment rewards 100 points, which is added to total number of points visible at the top of the page.
-
 1. **Frontend (Svelte App)**
     - Displays assignments and allows users to write & submit Python code.
     - Shows real-time grading updates via WebSockets.

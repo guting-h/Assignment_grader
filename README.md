@@ -1,26 +1,6 @@
-# Designing and Building Scalable Web Applications / Course Project I Template
+# Programming Assignment Grader Application
 
-Provides an endpoint for grading programming assignments. Has the functionality
-needed to create a grader image based on `grader-image` and to copy source code
-and test code to the image.
+The application offers a grader system that enables users to solve programming assignments interactively. Upon opening the application, users see an assignment title and handout, along with a textarea to write their Python solution. When they submit their code, it is sent for grading. After the grading result is available, it will automatically be updated and displayed to the user. Submitting a correct solution allows the user to navigate to a new assignmnent page. Each uniquely completed assignment rewards 100 points, which is added to total number of points visible at the top of the page.
 
-When the grader API is run, the Docker daemon should be exposed to the grader
-API to allow running the created Docker images.
-
-This is done by mapping the docker daemon socket to the grader api in the
-`docker-compose.yml` file, e.g.
-
-```
-# ...
-  grader-api:
-    build: grader-api
-    image: grader-api
-    restart: "no"
-    volumes:
-      - ./grader-api/:/app
-      - ./app-cache/:/app-cache
-      - "/var/run/docker.sock:/var/run/docker.sock"
-    ports:
-      - 7000:7000
-# ...
-```
+- For instructions on running the application and testing, refer to [RUNNING.md](RUNNING.md)
+- For the architectural overview and future improvements, refer to [REFLECTION.md](REFLECTION.md)
